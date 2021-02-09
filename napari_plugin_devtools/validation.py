@@ -60,13 +60,12 @@ def validate_function(
 
     assert plugin_name is not None, "No plugin name specified"
     for func in args if isinstance(args, list) else [args]:
-        assert not isinstance(func, tuple), (
-            "To provide multiple function widgets "
-            "please use a LIST of callables"
-        )
+        assert not isinstance(
+            func, tuple
+        ), "To provide multiple functions please use a LIST of callables"
         assert isinstance(func, FunctionType), (
             f'Plugin {plugin_name!r} provided a non-callable type to '
-            f'{hook_name}: {type(func)!r}. Function widget ignored.'
+            f'{hook_name}: {type(func)!r}. Function ignored.'
         )
 
         # Get function name
@@ -74,7 +73,7 @@ def validate_function(
 
         key = (plugin_name, name)
         assert key not in functions, (
-            "Plugin '{}' has already registered a function widget '{}' "
+            "Plugin '{}' has already registered a function '{}' "
             "which has now been overwritten".format(*key)
         )
 

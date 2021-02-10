@@ -11,18 +11,18 @@ from pkginfo import SDist, Wheel
 functions: Dict[Tuple[str, str], Callable] = dict()
 
 
-def validate_artifacts(folder):
-    """Validate the artifacts built for distribution.
+def validate_packages(folder):
+    """Validate the packages built for distribution.
 
     Parameters
     ----------
     folder : str
-        artifacts folder after build with setuptools
+        dist folder after build with setuptools
 
     Raises
     ------
     AssertionError
-        If the artifact is not build properly,
+        If the package is not annotated properly
     """
     for pkgpath in os.listdir(folder):
         pkgpath = os.path.join(folder, pkgpath)
@@ -33,7 +33,14 @@ def validate_artifacts(folder):
         else:
             print(f'Not a valid format {pkgpath}')
             continue
-        assert 'Framework :: napari' in dist.classifiers
+        assert (
+            hasattr(dist, 'classifiers')
+            and 'Framework :: napari' in dist.classifiers
+        ), (
+            'Classifier Framework :: napari must be specified '
+            'for the plugin to be discovered'
+        )
+
         print(f'validated {pkgpath}')
 
 
@@ -122,4 +129,8 @@ def list_function_implementations(plugin_name=None):
                     'defaults': spec.defaults,
                 }
             )
+    assert len(function_signatures) > 0, (
+        'No function found under the entrypoint, annotate plugin function '
+        'and add the module to the entry_points under napari.plugin'
+    )
     return json.dumps(function_signatures, default=str)

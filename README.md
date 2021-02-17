@@ -8,18 +8,17 @@
 A repo with tools and services for [napari plugin](https://napari.org/docs/dev/plugins/index.html) developers
 
 ## Validation tool
-The validation tools provides more transparency and confidence for 
-plugin developers through automated tests, these checks verify that 
-the plugin is available for users of napari to install, and would 
-register entry points with napari. 
+The validation tools provides automated tests for plugin developers, 
+these checks verify that the plugin is available for users of napari 
+to install, and would register entry points with napari. 
 
-There are two parts to the validation 
-tool, one part being CLI and another part being pytest fixture, 
+There are two parts to the validation tool, one part being 
+command line interface and another part being pytest fixture, 
 
 ### CLI Usage
-CLI can be used by CI/CD pipelines to introduce quick verifications 
-of plugin setups without more specific input required, it serves as
-a "sanity check". (It is can accessible from python in validation.py)
+CLI can be used by continuous integration (CI) pipelines to introduce 
+quick verifications of plugin setups without more specific input required, 
+it serves as a "sanity check". (Also accessible from python in validation.py)
 
 The tool starts as `npd <cmd>`, there are 2 cmds currently:
 

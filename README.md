@@ -30,7 +30,7 @@ checks that all packages built under dist are correctly tagged with
 classifier "Framework :: napari". This is advisable for most plugins
 unless you wish your plugin remain hidden to typical end users.
 
-`npd --validate-functions` verify that after the plugin is installed 
+`npd --validate-functions` verifies that after the plugin is installed 
 to current python environment, typically done through `pip install -e .`, 
 there are at least one analysis function registered by the plugin, and 
 there are no conflicts in name or registration error, it also output 

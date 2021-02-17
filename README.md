@@ -25,7 +25,7 @@ The tool starts as `npd <cmd>`, there are 2 cmds currently:
 
 `npd --validate-packages` should be used after packages are built
 for pypi releases, (example: this repo is built by pep517 standard
-`pip install pep517 && python -m pep517.build .`) and the validator
+`pip install pep517 && python -m pep517.build .`).  The validator
 checks that all packages built under dist are correctly tagged with
 classifier "Framework :: napari". This is required for most plugins
 unless you wish your plugin remain hidden to typical end users.

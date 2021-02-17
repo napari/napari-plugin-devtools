@@ -25,7 +25,7 @@ def main():
         validate_packages('dist')
 
     if args.validate_functions:
-        list_function_implementations()
+        print(list_function_implementations())
 
 
 if __name__ == '__main__':

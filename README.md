@@ -20,7 +20,7 @@ The CLI can be used by continuous integration (CI) pipelines to perform a
 quick verification of a plugins setup without any specific input required. 
 it serves as a "sanity check". (Also accessible from python in validation.py)
 
-The tool starts as `npd <cmd>`, there are 2 cmds currently:
+The tool can be run as `npd <cmd>`. There are 2 commands currently:
 
 `npd --validate-packages` should be used after packages are built
 for pypi releases, (example: this repo is built by pep517 standard

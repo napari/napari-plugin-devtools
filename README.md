@@ -15,7 +15,7 @@ to install, and would register entry points with napari.
 There are two parts to the validation tool, one part being 
 command line interface and another part being pytest fixture, 
 
-### CLI Usage
+### Command Line Interface (CLI) Usage
 CLI can be used by continuous integration (CI) pipelines to introduce 
 quick verifications of plugin setups without more specific input required, 
 it serves as a "sanity check". (Also accessible from python in validation.py)

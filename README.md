@@ -12,8 +12,8 @@ The validation tools provides automated tests for plugin developers,
 these checks verify that the plugin is available for users of napari 
 to install, and would register entry points with napari. 
 
-There are two parts to the validation tool, one part being 
-command line interface and another part being pytest fixture, 
+There are two parts to the validation tool. One part is a 
+command line interface and the other is a pytest fixture.
 
 ### Command Line Interface (CLI) Usage
 CLI can be used by continuous integration (CI) pipelines to introduce 

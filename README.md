@@ -31,7 +31,7 @@ unless you do not want your plugin to appear in the built-in plugin installation
 
 `npd --validate-functions` verifies that after the plugin is installed 
 to current python environment, typically done through `pip install -e .`, 
-there are at least one analysis function registered by the plugin, and 
+there is at least one analysis function registered by the plugin, and 
 there are no conflicts in name or registration error, it also output 
 all registered function signaturesin a json format that can be used 
 for further inspection, for example:

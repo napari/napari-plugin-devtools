@@ -17,7 +17,7 @@ command line interface and another part being pytest fixture,
 
 ### Command Line Interface (CLI) Usage
 CLI can be used by continuous integration (CI) pipelines to introduce 
-quick verifications of plugin setups without more specific input required, 
+quick verification of a plugins setup without any specific input required. 
 it serves as a "sanity check". (Also accessible from python in validation.py)
 
 The tool starts as `npd <cmd>`, there are 2 cmds currently:

@@ -7,6 +7,11 @@
 
 A repo with tools and services for [napari plugin](https://napari.org/docs/dev/plugins/index.html) developers
 
+## Installation
+This tool can be installed via pip: `pip install napari-plugin-devtools`, 
+you can also add it to your requirements.txt to be installed with other 
+dependencies automatically.
+
 ## Validation tool
 The validation tools provides automated tests for plugin developers, 
 these checks verify that the plugin is available for users of napari 
@@ -29,11 +34,11 @@ checks that all packages built under dist are correctly tagged with
 classifier "Framework :: napari". This is recommended for most plugins
 unless you do not want your plugin to appear in the napari built-in plugin installation tool.
 
-`npd --validate-functions` verifies that after the plugin is installed 
-to current python environment, typically done through `pip install -e .`, 
-there is at least one analysis function registered by the plugin, and 
-there are no conflicts in name or registration error, it also output 
-all registered function signaturesin a json format that can be used 
+`npd --validate-readers|--validate-writers|--validate-functions|--validate-widgets`, 
+verifies that after the plugin is installed to current python environment, typically done 
+through `pip install -e .`, there is at least one hook under corresponding category 
+registered by the plugin, and there are no conflicts in name or registration error, 
+it also output all registered function signatures in a json format that can be used 
 for further inspection, for example:
 ```
     [{
@@ -51,7 +56,7 @@ for further inspection, for example:
 ``` 
 
 Multiple cmds in one execution is supported, for example: 
-`npd --validate-functions --validate-packages`
+`npd --validate-readers --validate-functions --validate-packages`
 
 ### Pytest fixture usage
 devtools provides a pytest fixture: napari_plugin_tester 

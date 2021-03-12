@@ -25,21 +25,23 @@ The CLI can be used by continuous integration (CI) pipelines to perform a
 quick verification of a plugins setup without any specific input required. 
 It serves as a quick "sanity check". (It is also accessible from python in validation.py)
 
-The tool can be run as `npd <cmd>`. There are 2 commands currently:
+The tool can be run as `npd <cmd>`. where currently we support cmd `validate`:
 
-`npd --validate-packages` should be used after packages are built
-for pypi releases, (example: this repo is built by pep517 standard
-`pip install pep517 && python -m pep517.build .`).  The validator
-checks that all packages built under dist are correctly tagged with
-classifier "Framework :: napari". This is recommended for most plugins
-unless you do not want your plugin to appear in the napari built-in plugin installation tool.
+`-a|--all`: validation is then run on everything, including package checks and all hooks checks.
+In this mode the command has exit code 1 if no hook of any type is found, or any package failed 
+to be validated.
 
-`npd --validate-readers|--validate-writers|--validate-functions|--validate-widgets`, 
-verifies that after the plugin is installed to current python environment, typically done 
-through `pip install -e .`, there is at least one hook under corresponding category 
-registered by the plugin, and there are no conflicts in name or registration error, 
-it also output all registered function signatures in a json format that can be used 
-for further inspection, for example:
+`-p|--packages [PACKAGES [PACKAGES ...]]`: validation runs on packages, it checks packages with 
+given paths, and if no path is given, it runs on all files under `dist` folder to checks that 
+all packages built are correctly tagged with classifier "Framework :: napari". This is 
+recommended for most plugins unless you do not want your plugin to appear in the napari built-in 
+plugin installation tool. Can be used with `-s|--skip-repackaging` when not rebuilding dist folder.
+
+`-k|--hooks {reader,writer,function,widget} [{reader,writer,function,widget} ...]` validation runs on
+provided list of hook types that after the plugin is installed to current python environment, 
+typically done through `pip install -e .`, there is at least one hook under corresponding category 
+registered by the plugin, and there are no conflicts in name or registration error, when used
+with verbose mode, the function signatures are also printed, for example:
 ```
     [{
         "plugin name": "napari-demo",
@@ -55,8 +57,20 @@ for further inspection, for example:
     }]
 ``` 
 
-Multiple cmds in one execution is supported, for example: 
-`npd --validate-readers --validate-functions --validate-packages`
+`-i|--include-plugin INCLUDE_PLUGIN [INCLUDE_PLUGIN ...]` run hook checks only on listed plugins, 
+this is useful to filter out other plugins on a complicated python environment.
+
+
+`-e|--exclude-plugin EXCLUDE_PLUGIN [EXCLUDE_PLUGIN ...]` do not run hook checks on listed plugins, 
+this is useful to filter out other plugins on a complicated python environment.
+
+`-s|--skip-repackaging` when specified, skipping the packaging step before package checks.
+This is useful when the dist folder has correct packages to validate. Otherwise we would rebuild dist
+folder to make sure the result is correctly reflecting latest code status.
+
+`-v|--verbose` enable verbose mode, gives slightly more information on the underlying findings of validation process.
+
+
 
 ### Pytest fixture usage
 devtools provides a pytest fixture: napari_plugin_tester 

@@ -1,5 +1,5 @@
 __all__ = [
-    "validate_packages",
+    "validate_package",
     "validate_function",
     "list_hook_implementations",
 ]
@@ -7,5 +7,5 @@ __all__ = [
 from .validation import (
     list_hook_implementations,
     validate_function,
-    validate_packages,
+    validate_package,
 )

@@ -1,7 +1,5 @@
 import enum
 import inspect
-import json
-import os
 from types import FunctionType
 from typing import Callable, Dict, List, Union
 
@@ -27,45 +25,29 @@ class Options(enum.Enum):
     widget = [plugin_manager.hook.napari_experimental_provide_dock_widget]
 
 
-def validate_packages(folder):
-    """Validate the packages built for distribution.
-
-    Parameters
-    ----------
-    folder : str
-        dist folder after build with setuptools
-
-    Returns
-    ------
-    err_code : int
-        0 if every package is valid, 1 otherwise
-    """
-    err_code = 0
-    for pkgpath in os.listdir(folder):
-        pkgpath = os.path.join(folder, pkgpath)
-        if pkgpath.endswith('.tar.gz'):
-            dist = SDist(pkgpath)
-        elif pkgpath.endswith('.whl'):
-            dist = Wheel(pkgpath)
-        else:
-            print(f'Not a valid format {pkgpath}')
-            continue
-        if not (
-            hasattr(dist, 'classifiers')
-            and 'Framework :: napari' in dist.classifiers
-        ):
-            err_code = 1
+def validate_package(pkgpath, verbose=False):
+    if pkgpath.endswith('.tar.gz'):
+        dist = SDist(pkgpath)
+    elif pkgpath.endswith('.whl'):
+        dist = Wheel(pkgpath)
+    else:
+        print(f'Not a valid format {pkgpath}')
+        return False
+    if not (
+        hasattr(dist, 'classifiers')
+        and 'Framework :: napari' in dist.classifiers
+    ):
+        print(
+            f'Woops! "Framework :: napari" was not found in {pkgpath}\n'
+            f'Please update your package setup configuration to include '
+            f'"Framework :: napari", then rebuild the distribution.'
+        )
+        if verbose:
             classifiers = '\n\t'.join(dist.classifiers)
-            print(
-                f'Woops! "Framework :: napari" was not found in {pkgpath}\n'
-                f'Know classifiers:\n'
-                f'\t{classifiers}\n'
-                f'Please update your package setup configuration to include '
-                f'"Framework :: napari", then rebuild the distribution.\n'
-            )
-        else:
-            print(f'validated {pkgpath}')
-    return err_code
+            print(f'Know classifiers:\n\t{classifiers}\n')
+        return False
+    else:
+        return True
 
 
 def validate_function(
@@ -86,24 +68,24 @@ def validate_function(
 
     Returns
     ------
-    err_code: int
-        0 if the function is valid, 1 otherwise
+    validated: boolean
+        True if the function is valid, False otherwise
     """
-    err_code = 0
+    validated = True
     plugin_name = hookimpl.plugin_name
     hook_name = '`napari_experimental_provide_function`'
     if plugin_name is None:
-        err_code = 1
+        validated = False
         print("No plugin name specified")
 
     for func in args if isinstance(args, list) else [args]:
         if isinstance(func, tuple):
-            err_code = 1
+            validated = False
             print(
                 "To provide multiple functions please use a LIST of callables"
             )
         elif not isinstance(func, FunctionType):
-            err_code = 1
+            validated = False
             print(
                 f'Plugin {plugin_name!r} provided a non-callable type to '
                 f'{hook_name}: {type(func)!r}. Function ignored.'
@@ -114,31 +96,35 @@ def validate_function(
 
         key = (plugin_name, name)
         if key in functions:
-            err_code = 1
+            validated = False
             print(
                 f"Plugin '{plugin_name}' has already registered a function "
                 f"'{name}' which has now been overwritten"
             )
         functions[key] = func
 
-    return err_code
+    return validated
 
 
-def list_hook_implementations(option, plugin_name=None):
+def list_hook_implementations(option, include_plugins, exclude_plugins):
     """
     List hook implementations found when loaded by napari
 
     Parameters
     ----------
-    option : type of the function hook to check
-    plugin_name : if provided, only show functions from the given plugin name
+    option : Options
+        type of the function hook to check
+    include_plugins : set[str]
+        if provided, only show functions from the given plugin name
+    exclude_plugins : set[str]
+        if provided, do not show functions from the given set
 
     Returns
     -------
-    err_code: int
-        0 if there is one hook registered and no conflicts found, 1 otherwise
-    functions_signatures: str
-        Json string for the list of function signatures
+    validated: boolean
+        True if the functions are validated, False otherwise
+    functions_signatures: List
+        list of function signatures
 
     Example:
     [{
@@ -155,17 +141,25 @@ def list_hook_implementations(option, plugin_name=None):
     }]
     """
     function_signatures = []
-    err_code = 0
+    validated = True
     functions = dict()
-
+    if exclude_plugins is None:
+        exclude_plugins = {'builtins', 'svg'}
+    else:
+        exclude_plugins.add('builtins')
+        exclude_plugins.add('svg')  # excluding default installed plugins
     if option == Options.function or option == Options.widget:
         fw_hook = option.value[0]
         res = fw_hook._hookexec(fw_hook, fw_hook.get_hookimpls(), None)
         for result, impl in zip(res.result, res.implementation):
-            err_code += validate_function(result, impl, functions)
+            validated = validated and validate_function(
+                result, impl, functions
+            )
         for key, value in functions.items():
             spec = inspect.getfullargspec(value)
-            if plugin_name is None or plugin_name == key[0]:
+            if (key[0] not in exclude_plugins) and (
+                include_plugins is None or key[0] in include_plugins
+            ):
                 function_signatures.append(
                     {
                         'plugin name': key[0],
@@ -178,10 +172,10 @@ def list_hook_implementations(option, plugin_name=None):
     elif option == Options.reader or option == Options.writer:
         for hook_spec in option.value:
             for hook_impl in hook_spec.get_hookimpls():
-                if (
-                    hook_impl.plugin_name != 'builtins'
-                    and hook_impl.plugin_name != 'svg'
-                ):  # remove plugins installed by default
+                if (hook_impl.plugin_name not in exclude_plugins) and (
+                    include_plugins is None
+                    or hook_impl.plugin_name in include_plugins
+                ):
                     function_signatures.append(
                         {
                             'plugin name': hook_impl.plugin_name,
@@ -190,12 +184,4 @@ def list_hook_implementations(option, plugin_name=None):
                             'trylast': hook_impl.trylast,
                         }
                     )
-
-    if len(function_signatures) == 0:
-        print(
-            f'No hook found under "{option.name}", annotate plugin hooks '
-            'and add the module to the entry_points under napari.plugin'
-        )
-        err_code = 1
-
-    return err_code, json.dumps(function_signatures, default=str)
+    return validated, function_signatures

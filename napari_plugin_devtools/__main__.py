@@ -42,12 +42,6 @@ def main():
         "-e", "--exclude-plugin", nargs="+", help="exclude specified plugins"
     )
     validate_parser.add_argument(
-        "-s",
-        "--skip-repackaging",
-        action="store_true",
-        help="skip repackaging in package validation",
-    )
-    validate_parser.add_argument(
         "-v", "--verbose", action="store_true", help="print verbose report"
     )
     if len(sys.argv) == 1:

@@ -31,7 +31,8 @@ The tool can be run as `npd <cmd>`. where currently we support cmd `validate`:
 In this mode the command has exit code 1 if no hook of any type is found, or any package failed 
 to be validated.
 
-`-p|--packages [PACKAGES [PACKAGES ...]]`: validation runs on packages, it checks packages with 
+`-p|--packages [PACKAGES [PACKAGES ...]]`: validation runs on packages built, for example
+`python setup.py sdist bdist_wheel`, it checks packages with 
 given paths, and if no path is given, it runs on all files under `dist` folder to checks that 
 all packages built are correctly tagged with classifier "Framework :: napari". This is 
 recommended for most plugins unless you do not want your plugin to appear in the napari built-in 

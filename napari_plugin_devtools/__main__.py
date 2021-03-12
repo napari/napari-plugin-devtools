@@ -99,7 +99,7 @@ def validate_hooks(args):
             indent=4,
         )
         print(
-            f'No hook found for {args.hooks}, please check the following:\n'
+            f'Error: No {args.hooks} hook found, please check the following:\n'
             f'1. Plugin module is registered in entry_points of the project\n'
             f'2. Plugin hook is annotated with @napari_hook_implementation\n'
             f'3. The annotated method are named accordingly: {names}'
@@ -111,9 +111,16 @@ def validate_hooks(args):
 def validate_packages(args):
     packages_validated = True
     if len(args.packages) == 0:
-        for pkgpath in os.listdir("dist"):
-            pkgpath = os.path.join("dist", pkgpath)
-            args.packages.append(pkgpath)
+        if os.path.isdir("dist"):
+            for pkgpath in os.listdir("dist"):
+                pkgpath = os.path.join("dist", pkgpath)
+                args.packages.append(pkgpath)
+        else:
+            print(
+                "Error: No package found under dist folder, "
+                "repackage and try again"
+            )
+            packages_validated = False
     for package in args.packages:
         package_validated = validate_package(package, verbose=args.verbose)
         if package_validated and args.verbose:

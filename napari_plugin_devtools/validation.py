@@ -31,14 +31,14 @@ def validate_package(pkgpath, verbose=False):
     elif pkgpath.endswith('.whl'):
         dist = Wheel(pkgpath)
     else:
-        print(f'Not a valid format {pkgpath}')
+        print(f'Error: Not a valid format {pkgpath}')
         return False
     if not (
         hasattr(dist, 'classifiers')
         and 'Framework :: napari' in dist.classifiers
     ):
         print(
-            f'Woops! "Framework :: napari" was not found in {pkgpath}\n'
+            f'Error: "Framework :: napari" was not found in {pkgpath}\n'
             f'Please update your package setup configuration to include '
             f'"Framework :: napari", then rebuild the distribution.'
         )
@@ -76,19 +76,17 @@ def validate_function(
     hook_name = '`napari_experimental_provide_function`'
     if plugin_name is None:
         validated = False
-        print("No plugin name specified")
+        print("Error: No plugin name specified")
 
     for func in args if isinstance(args, list) else [args]:
         if isinstance(func, tuple):
             validated = False
-            print(
-                "To provide multiple functions please use a LIST of callables"
-            )
+            print("Error: convert tuple to list for multiple callables")
         elif not isinstance(func, FunctionType):
             validated = False
             print(
-                f'Plugin {plugin_name!r} provided a non-callable type to '
-                f'{hook_name}: {type(func)!r}. Function ignored.'
+                f'Error: Plugin {plugin_name!r} provided a non-callable type '
+                f'to {hook_name}: {type(func)!r}. Function ignored.'
             )
 
         # Get function name
@@ -98,8 +96,8 @@ def validate_function(
         if key in functions:
             validated = False
             print(
-                f"Plugin '{plugin_name}' has already registered a function "
-                f"'{name}' which has now been overwritten"
+                f"Error: Plugin '{plugin_name}' has already registered a "
+                f"function '{name}' which has now been overwritten"
             )
         functions[key] = func
 

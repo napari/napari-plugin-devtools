@@ -14,25 +14,6 @@ def main():
     sub_parsers = parser.add_subparsers(help='validate plugins')
     validate_parser = sub_parsers.add_parser("validate")
     validate_parser.add_argument(
-        "-a",
-        "--all",
-        action="store_true",
-        help="validate all package and hooks",
-    )
-    validate_parser.add_argument(
-        "-p",
-        "--packages",
-        nargs="*",
-        help="validate specific package or dist folder",
-    )
-    validate_parser.add_argument(
-        "-k",
-        "--hooks",
-        nargs="+",
-        choices=[option.name for option in Options],
-        help="only validate given hooks",
-    )
-    validate_parser.add_argument(
         "-i",
         "--include-plugin",
         nargs="+",
@@ -46,88 +27,71 @@ def main():
     )
     if len(sys.argv) == 1:
         parser.print_help()
+        print("----Currently we only support 'npd validate'----")
         parser.exit()
     args = parser.parse_args()
 
-    packages_validated = True
-    hooks_validated = True
+    hooks = ['reader', 'writer', 'function', 'widget']
 
-    if not args.all and args.packages is None and args.hooks is None:
-        validate_parser.print_help()
+    error_code = 0
 
-    if args.all:
-        args.hooks = ['reader', 'writer', 'function', 'widget']
-        args.packages = []
+    print("-----------------------------------------------------------------")
+    hooks_validated = validate_hooks(
+        hooks, args.verbose, args.include_plugin, args.exclude_plugin
+    )
 
-    if args.packages is not None:
-        packages_validated = validate_packages(args)
-
-    if args.hooks:
-        hooks_validated = validate_hooks(args)
-
-    if packages_validated and hooks_validated:
-        return 0
-    elif packages_validated and not hooks_validated:
-        return 1
-    elif not packages_validated and hooks_validated:
-        return 2
+    if hooks_validated:
+        print("Success! Validated Function Hooks.")
     else:
-        return 3
+        error_code = 1
+        print("Error! No hook found in current environment.")
+        print("Please see tutorial in https://napari.org/docs/dev/plugins/")
+    print("-----------------------------------------------------------------")
+
+    if os.path.isdir("dist"):
+        if not validate_packages("dist", args.verbose):
+            error_code = 1
+            print("Error! Classifier is missing in at least 1 package.")
+    else:
+        print("Skipped classifier validation, no package found. Skipping")
+        print("this test may cause user not seeing your plugin in napari")
+        print("plugin installation menu. To rerun, Repackage dist folder.")
+
+    print("-----------------------------------------------------------------")
+    return error_code
 
 
-def validate_hooks(args):
+def validate_hooks(hooks, verbose, include_plugin, exclude_plugin):
     errors = []
     hooks_valid = True
     for option in Options:
-        if option.name in args.hooks:
+        if option.name in hooks:
             hook_found, hook_valid = validate_hook(
-                option, args.verbose, args.include_plugin, args.exclude_plugin
+                option, verbose, include_plugin, exclude_plugin
             )
             if not hook_found:
                 errors.append(option)
                 hooks_valid = hooks_valid and hook_valid
-    if (args.all and len(errors) == len(Options)) or (
-        not args.all and len(errors) > 0
-    ):
+    if len(errors) == len(Options):
         hooks_valid = False
-        names = json.dumps(
-            {
-                option.name: [hook_caller.name for hook_caller in option.value]
-                for option in errors
-            },
-            default=str,
-            indent=4,
-        )
-        print(
-            f'Error: No {args.hooks} hook found, please check the following:\n'
-            f'1. Plugin module is registered in entry_points of the project\n'
-            f'2. Plugin hook is annotated with @napari_hook_implementation\n'
-            f'3. The annotated method are named accordingly: {names}'
-        )
 
     return hooks_valid
 
 
-def validate_packages(args):
+def validate_packages(folder, verbose):
     packages_validated = True
-    if len(args.packages) == 0:
-        if os.path.isdir("dist"):
-            for pkgpath in os.listdir("dist"):
-                pkgpath = os.path.join("dist", pkgpath)
-                args.packages.append(pkgpath)
-        else:
-            print(
-                "Error: No package found under dist folder, "
-                "repackage and try again"
-            )
-            packages_validated = False
-    for package in args.packages:
-        package_validated = validate_package(package, verbose=args.verbose)
-        if package_validated and args.verbose:
+    packages = []
+    for pkgpath in os.listdir(folder):
+        pkgpath = os.path.join(folder, pkgpath)
+        packages.append(pkgpath)
+
+    for package in packages:
+        package_validated = validate_package(package, verbose=verbose)
+        if package_validated and verbose:
             print(f'validated {package}')
         packages_validated = packages_validated and package_validated
     if packages_validated:
-        print(f"Success! All {len(args.packages)} packages are validated")
+        print(f"Success! All {len(packages)} package(s) are validated")
     return packages_validated
 
 
@@ -138,7 +102,7 @@ def validate_hook(option, verbose, include_plugins, exclude_plugins):
     if len(signatures) == 0:
         return False, validated
     else:
-        print(f'Found {len(signatures)} {option.name} hooks')
+        print(f'Found {len(signatures)} {option.name} hook(s)')
         if verbose:
             signature = json.dumps(signatures, default=str, indent=4)
             print(f'{option.name}: {signature}')

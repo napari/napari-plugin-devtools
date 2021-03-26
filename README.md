@@ -27,7 +27,20 @@ It serves as a quick "sanity check". (It is also accessible from python in valid
 
 The tool can be run as `npd <cmd>`. where currently we support cmd `validate`:
 
-`npd validate`: list function hooks under current python environment, to install plugin from a repo to python 
+Before running `npd validate`, make sure you have prepared the repo for validation:
+1. install the plugin to the same python environment where `npd validate` is run:
+   ```
+   cd <plugin path>
+   pip install napari-plugin-devtools
+   pip install -e .
+   ```
+2. package the plugin, if skipped we do not run classifier validation, which may cause your plugin not showing 
+   up in napari's plugin installation menu. The build process can be different for your plugin, for a typical setup try:
+   ```
+   python setup.py sdist bdist_wheel
+   ```
+
+`npd validate` list function hooks under current python environment, to install plugin from a repo to python 
 environment, run `pip install -e <plugin path>`
 
 `npd validate -d|--dist dist` name of the dist, default to first plugin name if not provided, should be provided when 

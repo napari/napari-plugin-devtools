@@ -18,12 +18,12 @@ these checks verify that the plugin is available for users of napari
 to install, and would register entry points with napari. 
 
 There are two parts to the validation tool. One part is a 
-command line interface and the other is a pytest fixture.
+command line interface, and the other is a pytest fixture.
 
 ### Command Line Interface (CLI) Usage
 The CLI can be used by continuous integration (CI) pipelines to perform a 
-quick verification of a plugins setup without any specific input required. 
-It serves as a quick "sanity check". (It is also accessible from python in validation.py)
+quick verification of a plugin setup without any specific input required. 
+It serves as a quick "sanity check". (It is also accessible via Python in validation.py)
 
 The tool can be run as `npd <cmd>`. where currently we support cmd `validate`:
 
@@ -34,20 +34,20 @@ Before running `npd validate`, make sure you have prepared the repo for validati
    pip install napari-plugin-devtools
    pip install -e .
    ```
-2. package the plugin, if skipped we do not run classifier validation, which may cause your plugin not showing 
-   up in napari's plugin installation menu. The build process can be different for your plugin, for a typical setup try:
+2. package the plugin, if skipped we do not run classifier validation, which may cause your plugin not showing up in 
+   napari native plugin installation menu. The build process can be different for your plugin, for a typical setup try:
    ```
    python setup.py sdist bdist_wheel
    ```
 
-`npd validate` list function hooks under current python environment, to install plugin from a repo to python 
+`npd validate` list function hooks under current python environment, to install a plugin from a repo to python 
 environment, run `pip install -e <plugin path>`
 
 `npd validate -d|--dist dist` name of the dist, default to first plugin name if not provided, should be provided when 
 there are multiple plugins in same package or plugin name is different from package name
 
-`npd validate -v|--verbose` enable verbose mode, gives slightly more information on the underlying 
-findings of validation process. By default disabled to avoid the eye sore from too much text.
+`npd validate -v|--verbose` enable the verbose mode, gives slightly more information on the underlying 
+findings of validation process. It is by default disabled to avoid the eyesore from too much text.
 
 Output from `npd validate` has multiple sections, where each section is a separate validation where the header
 specifies what is being checked, and the last section is the aggregated report of overall status.
@@ -61,7 +61,7 @@ specifies what is being checked, and the last section is the aggregated report o
 
 ### Pytest fixture usage
 devtools provides a pytest fixture: napari_plugin_tester 
-in plugin_tester.py, it extends a plugin manager used by napari
+in the plugin_tester.py, it extends a plugin manager used by napari
 and have additional assertion modes ready:
 ```
 def test_pm(napari_plugin_tester):

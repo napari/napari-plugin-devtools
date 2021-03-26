@@ -131,7 +131,7 @@ def validate_entries(args):
                     spec = importlib.find_spec(module)
                     if spec is None:
                         print(
-                            f"Specified module {module} is not found under {plugin}"
+                            f"Specified module {module} is not found for {plugin}"
                         )
                         entry_error = True
                     else:
@@ -223,12 +223,12 @@ def validate_hooks(plugins, verbose):
 
     for plugin in plugins:
         if plugin not in plugin_functions:
-            if '' in errors:
-                errors[''].append(
+            if plugin in errors:
+                errors[plugin].append(
                     f"Error! No hook found in current environment for plugin: {plugin}."
                 )
             else:
-                errors[''] = [
+                errors[plugin] = [
                     f"Error! No hook found in current environment for plugin: {plugin}."
                 ]
             print_tutorial = True

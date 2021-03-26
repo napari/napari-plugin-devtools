@@ -27,20 +27,22 @@ It serves as a quick "sanity check". (It is also accessible from python in valid
 
 The tool can be run as `npd <cmd>`. where currently we support cmd `validate`:
 
-`npd validate`: validate classifiers and function hooks can be recognized by napari.
-The validation would run on built packages under dist folder to check if they are annotated
-properly with framework classifier, and validate hooks are properly annotated that they can be found
-by napari.
+`npd validate`: list function hooks under current python environment, to install plugin from a repo to python 
+environment, run `pip install -e <plugin path>`
 
-`npd validate -i|--include-plugin INCLUDE_PLUGIN [INCLUDE_PLUGIN ...]` run hook checks only on listed plugins, 
-this is useful to filter out other plugins on a complicated python environment.
-
-
-`npd validate -e|--exclude-plugin EXCLUDE_PLUGIN [EXCLUDE_PLUGIN ...]` do not run hook checks on listed plugins, 
-this is useful to filter out other plugins on a complicated python environment.
+`npd validate -d|--dist dist` name of the dist, default to first plugin name if not provided, should be provided when 
+there are multiple plugins in same package or plugin name is different from package name
 
 `npd validate -v|--verbose` enable verbose mode, gives slightly more information on the underlying 
-findings of validation process.
+findings of validation process. By default disabled to avoid the eye sore from too much text.
+
+Output from `npd validate` has multiple sections, where each section is a separate validation where the header
+specifies what is being checked, and the last section is the aggregated report of overall status.
+
+1. Hooks validation: check if there are at least one hook implemented by the plugin.
+2. Builds validation: check if all builds have correct trove classifiers.
+3. Entrypoint validation: check if the specified plugin module is registered as napari plugin in entrypoint.
+4. Validation report: if any of the validation is marked as FAILED, see above sections for details
 
 
 

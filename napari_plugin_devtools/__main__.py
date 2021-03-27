@@ -3,15 +3,60 @@ napari plugin command line developer tool.
 """
 import argparse
 import importlib.util as importlib
-import os
 import sys
 
-from pkg_resources import DistributionNotFound, get_entry_map
+from importlib_metadata import PackageNotFoundError, metadata
+from pkg_resources import DistributionNotFound, get_distribution
+from termcolor import colored
 
-from .validation import Options, list_hook_implementations, validate_package
+from .validation import Options, list_hook_implementations
+
+PASSED = colored('PASSED', 'green')
+FAILED = colored('FAILED', 'red')
 
 
 def main():
+    args = parse_args()
+    print("-" * 64)
+    print(
+        f"Scanning current python environment: "
+        f"{colored(sys.prefix, 'yellow')}"
+    )
+    return args.func(args)
+
+
+def validate_hooks(plugin, signatures, errors, verbose):
+    hooks = get_hooks_for_plugin(plugin, signatures)
+    if len(hooks) > 0:
+        print(f"* Hooks registration check - {plugin}:", PASSED)
+        if verbose:
+            print_hook_report(plugin, hooks, True)
+    else:
+        errors.append(
+            f"Error: No hook registered under "
+            f"plugin {plugin}, Please see tutorial in "
+            f"https://napari.org/docs/dev/plugins/ to "
+            f"verify your plugin setup"
+        )
+        print(f"* Hooks registration check - {plugin}:", FAILED)
+
+
+def validate_classifier(classifiers, errors, package, verbose):
+    if 'Framework :: napari' in classifiers:
+        print("* Classifier check:", PASSED)
+    else:
+        print("* Classifier check:", FAILED)
+        error = (
+            f"Error: 'Framework :: napari' does not exist for "
+            f"{package}'s {len(classifiers)} known classifier(s)"
+        )
+        if verbose:
+            error = error + f": {classifiers}"
+
+        errors.append(error)
+
+
+def parse_args():
     parser = argparse.ArgumentParser()
     sub_parsers = parser.add_subparsers(
         help='npd validate scans your current python environment to validate '
@@ -19,239 +64,169 @@ def main():
         'built artifacts under dist folder to validate classifiers.'
     )
     validate_parser = sub_parsers.add_parser("validate")
+    validate_parser.set_defaults(func=validate)
+    discover_parser = sub_parsers.add_parser("discover")
+    discover_parser.set_defaults(func=discover)
     validate_parser.add_argument(
-        'plugins',
+        'packages',
         nargs="+",
-        help="plugin(s) to validate",
-    )
-    validate_parser.add_argument(
-        "-d",
-        "--dist",
-        help="name of the dist, default to first plugin name if not provided, "
-        "specify when there are multiple plugins in same package or "
-        "plugin is different from package name",
+        help="package name(s) to validate",
     )
     validate_parser.add_argument(
         "-v", "--verbose", action="store_true", help="print verbose report"
     )
     if len(sys.argv) == 1:
         parser.print_help()
-        print("----Currently we only support 'npd validate'----")
         parser.exit()
-
     args = parser.parse_args()
-
-    if args.dist is None:
-        args.dist = args.plugins[0]
-    error_code = 0
-
-    print("-----------------------------------------------------------------")
-    print("Hooks validation:")
-    hooks_error = validate_functions(args)
-
-    print("-----------------------------------------------------------------")
-    print("Builds validation:")
-    package_error = validate_builds(args)
-
-    print("-----------------------------------------------------------------")
-    print("Entrypoint validation:")
-    entry_error = validate_entries(args)
-
-    print("-----------------------------------------------------------------")
-
-    if hooks_error:
-        print("Hooks validation: FAILED")
-        error_code = 1
-    else:
-        print("Hooks validation: PASSED")
-
-    if package_error is None:
-        print("Builds validation: SKIPPED")
-    elif package_error:
-        print("Builds validation: FAILED")
-        error_code = 1
-    else:
-        print("Builds validation: PASSED")
-
-    if entry_error:
-        print("Entrypoint validation: FAILED")
-        error_code = 1
-    else:
-        print("Entrypoint validation: PASSED")
-    return error_code
+    return args
 
 
-def validate_functions(args):
-    hooks_errors = validate_hooks(args.plugins, args.verbose)
-    hooks_error = False
-    if hooks_errors:
-        for key, value in hooks_errors.items():
-            if value:
-                hooks_error = True
-                print(f"Error[{key}]: {value}")
-    return hooks_error
+def validate(args):
+    errors = []
+    signatures, hook_errors = list_hook_implementations()
+    for package in args.packages:
+        print("-" * 64)
+        print(f"Validating package {package}")
 
-
-def validate_builds(args):
-    package_error = None
-    if os.path.isdir("dist"):
-        if not validate_packages("dist", args.verbose):
-            package_error = True
-            print("Error! Classifier is missing in at least 1 package.")
-        else:
-            package_error = False
-    else:
-        print("Skipped classifier validation, no package found. Skipping")
-        print("this test may cause user not seeing your plugin in napari")
-        print("plugin installation menu. To rerun, Repackage dist folder.")
-    return package_error
-
-
-def validate_entries(args):
-    entry_error = False
-    for plugin in args.plugins:
         try:
-            dist = args.dist
-            entry_map = get_entry_map(dist)
+            classifiers = metadata(package).get_all("Classifier")
+            entry_map = get_distribution(package).get_entry_map()
+        except PackageNotFoundError or DistributionNotFound:
+            print(f"Error: {package} is not found under current environment.")
+            print("Install package to current python environment and retry.")
+            continue
 
-            if 'napari.plugin' not in entry_map:
-                print(f"Error: Invalid entrypoint for {plugin}")
-                print(f"Add 'napari.plugin' to the entrypoint under {plugin}")
-                entry_error = True
-            else:
-                module = entry_map['napari.plugin'][plugin].module_name
-                name = entry_map['napari.plugin'][plugin].name
-                if plugin != name:
-                    print(
-                        f"Plugin name not matching, expecting "
-                        f"{plugin}, but found {name}"
-                    )
-                    entry_error = True
-                else:
-                    spec = importlib.find_spec(module)
-                    if spec is None:
-                        print(
-                            f"Specified module {module} is not found for {plugin}"
-                        )
-                        entry_error = True
-                    else:
-                        print(
-                            f"Validated entrypoint {module} exists for {plugin}."
-                        )
-        except DistributionNotFound:
-            print(f"Error: Unable to retrive entrypoint for {plugin}.")
-            print(f"Check your entrypoint setup to verify {plugin} is added.")
-            entry_error = True
+        validate_classifier(classifiers, errors, package, args.verbose)
 
-    if entry_error:
-        print("After your made the proper fix, reinstall the package.")
-        print("(Not sure how? try 'pip install -e <plugin folder>')")
-    return entry_error
+        plugins, entrypoint_errors = validate_entrypoint(
+            package, entry_map, args.verbose
+        )
+        errors.extend(entrypoint_errors)
+
+        for plugin in plugins:
+            if plugin in hook_errors:
+                errors.extend(hook_errors[plugin])
+            validate_hooks(plugin, signatures, errors, args.verbose)
+
+    if len(errors) > 0:
+        print("-" * 64)
+        for error in errors:
+            print(error)
+            print("-" * 64)
+        return 1
+    else:
+        return 0
 
 
-def validate_hooks(plugins, verbose):
+def discover(args):
+    print("-" * 64)
+    signatures, hook_errors = list_hook_implementations()
+    plugins = set()
+
+    if len(signatures) == 0:
+        print("No Hook found under current environment")
+        return 1
+
+    for option, signature in signatures.items():
+        for function in signature:
+            if 'builtins' != function['plugin name']:
+                plugins.add(function['plugin name'])
+    for plugin in plugins:
+        hooks = get_hooks_for_plugin(plugin, signatures)
+        print_hook_report(plugin, hooks, False)
+        print("-" * 64)
+
+    if len(hook_errors) > 0:
+        for plugin, error in hook_errors.items():
+            if len(error) > 0:
+                print(f"{plugin}: {error}")
+                print("-" * 64)
+    return 0
+
+
+def validate_entrypoint(package, entry_map, verbose):
+    errors = []
+    plugins = []
+    if 'napari.plugin' not in entry_map:
+        errors.append(
+            f"Error: Invalid entrypoint for package {package}, "
+            f"add 'napari.plugin' to the entrypoint under {package}"
+        )
+        print("* Entrypoint check - syntax:", FAILED)
+    else:
+        print("* Entrypoint check - syntax:", PASSED)
+        plugins = list(entry_map['napari.plugin'].keys())
+        if len(plugins) > 0:
+            print("* Entrypoint check - plugin registration:", PASSED)
+            if verbose:
+                print(f"\tPlugins registerd under {package}: {plugins}")
+        else:
+            errors.append(
+                f"Error: No plugin registered for package {package}, "
+                f"add plugin module registration under "
+                f"'napari.plugin'"
+            )
+            print("* Entrypoint check - plugin registration:", FAILED)
+
+        module_error = len(plugins) == 0
+        for plugin in plugins:
+            module = entry_map['napari.plugin'][plugin].module_name
+            spec = importlib.find_spec(module)
+            if spec is None:
+                module_error = True
+                errors.append(
+                    f"Error: Did not find module {module} for "
+                    f"plugin {plugin} under package {package}"
+                )
+        if module_error:
+            print("* Entrypoint check - registered modules exist:", FAILED)
+        else:
+            print("* Entrypoint check - registered modules exist:", PASSED)
+            if verbose:
+                modules = [
+                    entry_map['napari.plugin'][plugin].module_name
+                    for plugin in plugins
+                ]
+                print(f"\tModules found: {modules}")
+    return plugins, errors
+
+
+def get_hooks_for_plugin(plugin, signatures):
     plugin_functions = dict()
 
-    signatures, errors = list_hook_implementations()
     for (option, functions) in signatures.items():
         for function_signature in functions:
             name = function_signature['plugin name']
-            if name in plugins:
-                if (
-                    name in plugin_functions
-                    and option in plugin_functions[name]
-                ):
-                    plugin_functions[name][option].append(function_signature)
-                elif name in plugin_functions:
-                    plugin_functions[name][option] = [function_signature]
+            if name == plugin:
+                if option in plugin_functions:
+                    plugin_functions[option].append(function_signature)
                 else:
-                    plugin_functions[name] = {option: [function_signature]}
+                    plugin_functions[option] = [function_signature]
+    return plugin_functions
 
-    if plugin_functions:
-        print("Plugin hook registration for current environment:")
-    for name, mapping in plugin_functions.items():
-        for option, signatures in mapping.items():
-            if option == Options.function or option == Options.widget:
-                print(
-                    f'Found {len(signatures)} registered '
-                    f'{option.name} hook(s) for {name}:'
-                )
-                if verbose:
-                    print(
-                        "-",
-                        "\n- ".join(
-                            str(signature) for signature in signatures
-                        ),
-                    )
-                else:
-                    print(
-                        "-",
-                        "\n- ".join(
-                            signature["function name"]
-                            for signature in signatures
-                        ),
-                    )
-            else:
-                print(
-                    f"Found {len(signatures)} registered "
-                    f"{option.name} hook(s) for {name}:"
-                )
-                if verbose:
-                    print(
-                        "-",
-                        "\n- ".join(
-                            str(signature) for signature in signatures
-                        ),
-                    )
-                else:
-                    print(
-                        "-",
-                        "\n- ".join(
-                            signature["spec"] for signature in signatures
-                        ),
-                    )
-        print()
 
-    print_tutorial = False
-
-    if len(plugin_functions) == 0:
-        if '' in errors:
-            errors[''].append("Error! No hook found in current environment.")
+def print_hook_report(plugin, hooks, verbose):
+    tab = '\t' if verbose else ''
+    for option, signatures in hooks.items():
+        print(
+            f'{tab}Found {len(signatures)} registered '
+            f'{option.name} hook(s) for {plugin}:'
+        )
+        if option == Options.function or option == Options.widget:
+            print(
+                f"{tab}-",
+                f"\n{tab}- ".join(
+                    signature["function name"] for signature in signatures
+                ),
+            )
         else:
-            errors[''] = ["Error! No hook found in current environment."]
-        print_tutorial = True
-
-    for plugin in plugins:
-        if plugin not in plugin_functions:
-            if plugin in errors:
-                errors[plugin].append(
-                    f"Error! No hook found in current environment for plugin: {plugin}."
-                )
-            else:
-                errors[plugin] = [
-                    f"Error! No hook found in current environment for plugin: {plugin}."
-                ]
-            print_tutorial = True
-
-    if print_tutorial:
-        print("Please see tutorial in https://napari.org/docs/dev/plugins/")
-        print("to verify your plugin has the correct setup.")
-    return errors
-
-
-def validate_packages(folder, verbose):
-    packages_validated = True
-    packages = []
-    for pkgpath in os.listdir(folder):
-        pkgpath = os.path.join(folder, pkgpath)
-        packages.append(pkgpath)
-
-    for package in packages:
-        package_validated = validate_package(package, verbose=verbose)
-        if package_validated:
-            print(f'validated {package}')
-        packages_validated = packages_validated and package_validated
-    return packages_validated
+            print(
+                f"{tab}-",
+                f"\n{tab}- ".join(
+                    signature["spec"] for signature in signatures
+                ),
+            )
 
 
 if __name__ == '__main__':

@@ -5,7 +5,6 @@ from typing import Callable, Dict, List, Union
 
 from napari.plugins import plugin_manager
 from napari_plugin_engine import HookImplementation
-from pkginfo import SDist, Wheel
 
 
 class Options(enum.Enum):
@@ -23,31 +22,6 @@ class Options(enum.Enum):
     ]
     function = [plugin_manager.hook.napari_experimental_provide_function]
     widget = [plugin_manager.hook.napari_experimental_provide_dock_widget]
-
-
-def validate_package(pkgpath, verbose=False):
-    if pkgpath.endswith('.tar.gz'):
-        dist = SDist(pkgpath)
-    elif pkgpath.endswith('.whl'):
-        dist = Wheel(pkgpath)
-    else:
-        print(f'Error: Not a valid format {pkgpath}')
-        return False
-    if not (
-        hasattr(dist, 'classifiers')
-        and 'Framework :: napari' in dist.classifiers
-    ):
-        print(
-            f'Error: "Framework :: napari" was not found in {pkgpath}\n'
-            f'Please update your package setup configuration to include '
-            f'"Framework :: napari", then rebuild the distribution.'
-        )
-        if verbose:
-            classifiers = '\n\t'.join(dist.classifiers)
-            print(f'Know classifiers:\n\t{classifiers}\n')
-        return False
-    else:
-        return True
 
 
 def validate_function(

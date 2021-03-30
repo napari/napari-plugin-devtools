@@ -5,6 +5,8 @@
 
 ### Description
 napari plugin devtools scans the current python environment to find out details about napari plugin information.
+To validate a local folder with plugin code, for example a plugin that is working in progress, first install it,
+for example `pip install -e .` and then run npd in the same environment.
 
 ### Usage
 ```
@@ -26,7 +28,7 @@ only return 1 when all checks passed.
 
 ### Usage
 ```
-npd validate [Options] <package> [<packages>...]
+npd validate [Options] <package>
 ```
 
 ### Options
@@ -36,7 +38,7 @@ npd validate [Options] <package> [<packages>...]
 
 ### Examples
 
-validate single package
+validate without verbose flag
 ```
 $ pip install napari-svg
 $ npd validate napari-svg
@@ -50,53 +52,12 @@ Validating package napari-svg
 * Entrypoint check - registered modules exist: PASSED
 * Hooks registration check - svg: PASSED
 ----------------------------------------------------------------
-Error: 'Framework :: napari' does not exist for napari-svg's 12 known classifier(s)
+Error: 'Framework :: napari' does not exist for napari-svg's 12 known classifier(s), add 'Framework :: napari' to 
+classifier list, see https://napari.org/docs/dev/plugins/for_plugin_developers.html#step-4-share-your-plugin-with-the-world
 ----------------------------------------------------------------
 ```
 
-validate multiple packages with verbose output:
-```
-$ pip install napari-svg
-$ pip install napari-demo
-$ npd validate napari-svg napari-demo -v
-----------------------------------------------------------------
-Scanning current python environment: /Library/Frameworks/Python.framework/Versions/3.8
-----------------------------------------------------------------
-Validating package napari-svg
-* Classifier check: FAILED
-* Entrypoint check - syntax: PASSED
-* Entrypoint check - plugin registration: PASSED
-        Plugins registerd under napari-svg: ['svg']
-* Entrypoint check - registered modules exist: PASSED
-        Modules found: ['napari_svg']
-* Hooks registration check - svg: PASSED
-        Found 6 registered writer hook(s) for svg:
-        - napari_get_writer
-        - napari_write_image
-        - napari_write_labels
-        - napari_write_points
-        - napari_write_shapes
-        - napari_write_vectors
-----------------------------------------------------------------
-Validating package napari-demo
-* Classifier check: PASSED
-* Entrypoint check - syntax: PASSED
-* Entrypoint check - plugin registration: PASSED
-        Plugins registerd under napari-demo: ['napari-demo', 'napari-else']
-* Entrypoint check - registered modules exist: PASSED
-        Modules found: ['napari_demo', 'napari_else']
-* Hooks registration check - napari-demo: PASSED
-        Found 1 registered function hook(s) for napari-demo:
-        - image arithmetic
-* Hooks registration check - napari-else: PASSED
-        Found 1 registered function hook(s) for napari-else:
-        - image arithmetic other
-----------------------------------------------------------------
-Error: 'Framework :: napari' does not exist for napari-svg's 12 known classifier(s): ['Development Status :: 4 - Beta', 'Intended Audience :: Developers', 'Topic :: Software Development :: Testing', 'Programming Language :: Python', 'Programming Language :: Python :: 3', 'Programming Language :: Python :: 3.6', 'Programming Language :: Python :: 3.7', 'Programming Language :: Python :: 3.8', 'Programming Language :: Python :: Implementation :: CPython', 'Programming Language :: Python :: Implementation :: PyPy', 'Operating System :: OS Independent', 'License :: OSI Approved :: BSD License']
-----------------------------------------------------------------
-```
-
-validate package with some errors:
+validate package with some errors and verbose flag:
 ```
 $ pip install napari-demo
 $ npd validate napari-demo
@@ -111,7 +72,12 @@ Validating package napari-demo
 * Hooks registration check - napari-demo: PASSED
 * Hooks registration check - napari-else: FAILED
 ----------------------------------------------------------------
-Error: 'Framework :: napari' does not exist for napari-demo's 10 known classifier(s)
+verbose output
+Plugins registerd under napari-demo: ['napari-demo', 'napari-else']
+Found 1 registered function hook(s) for napari-demo
+- image arithmetic
+----------------------------------------------------------------
+Error: 'Framework :: napari' does not exist for napari-demo's 10 known classifier(s), add 'Framework :: napari' to classifier list, see https://napari.org/docs/dev/plugins/for_plugin_developers.html#step-4-share-your-plugin-with-the-world
 ----------------------------------------------------------------
 Error: Did not find module napari_not_exists for plugin napari-else under package napari-demo
 ----------------------------------------------------------------
@@ -159,8 +125,14 @@ Discover plugins in current python environment, and show hook types for each plu
 
 ### Usage
 ```
-$ npd discover
+$ npd discover [Options]
 ```
+
+### Options
+|name, shorthand    |Description                     |
+|-------------------|--------------------------------|
+|--verbose, -v      |Show more detailed output       |
+
 
 ### Examples
 List plugins under current python environment:
@@ -168,28 +140,42 @@ List plugins under current python environment:
 $ pip install napari-demo
 $ pip install napari-svg
 $ pip install napari-hdf5-labels-io
-$ npd discover
+$ npd discover            
 ----------------------------------------------------------------
 Scanning current python environment: /Library/Frameworks/Python.framework/Versions/3.8
 ----------------------------------------------------------------
-Found 1 registered function hook(s) for napari-demo:
-- image arithmetic
+Plugin found: svg
+Plugin found: napari-demo
+Plugin found: napari-hdf5-labels-io
+
+To see registered hooks, enable verbose flag -v
+```
+
+List plugins under current python environment with verbose flag:
+```
+$ pip install napari-demo
+$ pip install napari-svg
+$ pip install napari-hdf5-labels-io
+$ npd discover -v         
 ----------------------------------------------------------------
-Found 6 registered writer hook(s) for svg:
+Scanning current python environment: /Library/Frameworks/Python.framework/Versions/3.8
+----------------------------------------------------------------
+Plugin found: napari-hdf5-labels-io
+Plugin found: svg
+Plugin found: napari-demo
+----------------------------------------------------------------
+verbose output
+Found 1 registered reader hook(s) for napari-hdf5-labels-io
+- napari_get_reader
+Found 1 registered writer hook(s) for napari-hdf5-labels-io
+- napari_get_writer
+Found 6 registered writer hook(s) for svg
 - napari_get_writer
 - napari_write_image
 - napari_write_labels
 - napari_write_points
 - napari_write_shapes
 - napari_write_vectors
-----------------------------------------------------------------
-Found 1 registered function hook(s) for napari-else:
-- image arithmetic other
-----------------------------------------------------------------
-Found 1 registered reader hook(s) for napari-hdf5-labels-io:
-- napari_get_reader
-Found 1 registered writer hook(s) for napari-hdf5-labels-io:
-- napari_get_writer
-----------------------------------------------------------------
-
+Found 1 registered function hook(s) for napari-demo
+- image arithmetic
 ```

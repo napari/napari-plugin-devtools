@@ -29,8 +29,7 @@ def validate_hooks(plugin, signatures, errors, verbose):
     hooks = get_hooks_for_plugin(plugin, signatures)
     if len(hooks) > 0:
         print(f"* Hooks registration check - {plugin}:", PASSED)
-        if verbose:
-            print_hook_report(plugin, hooks, True)
+        get_hook_report(plugin, hooks, verbose)
     else:
         errors.append(
             f"Error: No hook registered under "
@@ -42,13 +41,18 @@ def validate_hooks(plugin, signatures, errors, verbose):
 
 
 def validate_classifier(classifiers, errors, package, verbose):
+    url = (
+        "https://napari.org/docs/dev/plugins/for_plugin_developers.html"
+        "#step-4-share-your-plugin-with-the-world"
+    )
     if 'Framework :: napari' in classifiers:
         print("* Classifier check:", PASSED)
     else:
         print("* Classifier check:", FAILED)
         error = (
             f"Error: 'Framework :: napari' does not exist for "
-            f"{package}'s {len(classifiers)} known classifier(s)"
+            f"{package}'s {len(classifiers)} known classifier(s), "
+            f"add 'Framework :: napari' to classifier list, see {url}"
         )
         if verbose:
             error = error + f": {classifiers}"
@@ -68,12 +72,22 @@ def parse_args():
     discover_parser = sub_parsers.add_parser("discover")
     discover_parser.set_defaults(func=discover)
     validate_parser.add_argument(
-        'packages',
-        nargs="+",
-        help="package name(s) to validate",
+        'package',
+        help="package name to validate",
     )
     validate_parser.add_argument(
-        "-v", "--verbose", action="store_true", help="print verbose report"
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=False,
+        help="print verbose report",
+    )
+    discover_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=False,
+        help="print verbose report",
     )
     if len(sys.argv) == 1:
         parser.print_help()
@@ -84,30 +98,35 @@ def parse_args():
 
 def validate(args):
     errors = []
+    verbose = []
+    package = args.package
     signatures, hook_errors = list_hook_implementations()
-    for package in args.packages:
+    print("-" * 64)
+    print(f"Validating package {package}")
+
+    try:
+        classifiers = metadata(package).get_all("Classifier")
+        entry_map = get_distribution(package).get_entry_map()
+    except PackageNotFoundError or DistributionNotFound:
+        print(f"Error: {package} is not found under current environment.")
+        print("Install package to current python environment and retry.")
+        return 1
+
+    validate_classifier(classifiers, errors, package, verbose)
+
+    plugins = validate_entrypoint(package, entry_map, errors, verbose)
+
+    for plugin in plugins:
+
+        if plugin in hook_errors:
+            errors.extend(hook_errors[plugin])
+        validate_hooks(plugin, signatures, errors, verbose)
+
+    if args.verbose and verbose:
         print("-" * 64)
-        print(f"Validating package {package}")
-
-        try:
-            classifiers = metadata(package).get_all("Classifier")
-            entry_map = get_distribution(package).get_entry_map()
-        except PackageNotFoundError or DistributionNotFound:
-            print(f"Error: {package} is not found under current environment.")
-            print("Install package to current python environment and retry.")
-            continue
-
-        validate_classifier(classifiers, errors, package, args.verbose)
-
-        plugins, entrypoint_errors = validate_entrypoint(
-            package, entry_map, args.verbose
-        )
-        errors.extend(entrypoint_errors)
-
-        for plugin in plugins:
-            if plugin in hook_errors:
-                errors.extend(hook_errors[plugin])
-            validate_hooks(plugin, signatures, errors, args.verbose)
+        print("verbose output")
+        for line in verbose:
+            print(line)
 
     if len(errors) > 0:
         print("-" * 64)
@@ -123,6 +142,7 @@ def discover(args):
     print("-" * 64)
     signatures, hook_errors = list_hook_implementations()
     plugins = set()
+    verbose = []
 
     if len(signatures) == 0:
         print("No Hook found under current environment")
@@ -133,9 +153,18 @@ def discover(args):
             if 'builtins' != function['plugin name']:
                 plugins.add(function['plugin name'])
     for plugin in plugins:
+        print(f"Plugin found: {plugin}")
         hooks = get_hooks_for_plugin(plugin, signatures)
-        print_hook_report(plugin, hooks, False)
+        get_hook_report(plugin, hooks, verbose)
+
+    if not args.verbose:
+        print()
+        print("To see registered hooks, enable verbose flag -v")
+    if args.verbose and verbose:
         print("-" * 64)
+        print("verbose output")
+        for line in verbose:
+            print(line)
 
     if len(hook_errors) > 0:
         for plugin, error in hook_errors.items():
@@ -145,13 +174,17 @@ def discover(args):
     return 0
 
 
-def validate_entrypoint(package, entry_map, verbose):
-    errors = []
+def validate_entrypoint(package, entry_map, errors, verbose):
     plugins = []
+    url = (
+        "https://napari.org/docs/dev/plugins/for_plugin_developers.html"
+        "#step-3-make-your-plugin-discoverable"
+    )
     if 'napari.plugin' not in entry_map:
         errors.append(
             f"Error: Invalid entrypoint for package {package}, "
-            f"add 'napari.plugin' to the entrypoint under {package}"
+            f"add 'napari.plugin' section to the entrypoint under {package}, "
+            f"see {url}"
         )
         print("* Entrypoint check - syntax:", FAILED)
     else:
@@ -159,13 +192,12 @@ def validate_entrypoint(package, entry_map, verbose):
         plugins = list(entry_map['napari.plugin'].keys())
         if len(plugins) > 0:
             print("* Entrypoint check - plugin registration:", PASSED)
-            if verbose:
-                print(f"\tPlugins registerd under {package}: {plugins}")
+            verbose.append(f"Plugins registerd under {package}: {plugins}")
         else:
             errors.append(
                 f"Error: No plugin registered for package {package}, "
-                f"add plugin module registration under "
-                f"'napari.plugin'"
+                f"add plugin module registration in entrypoint under section "
+                f"'napari.plugin', see {url}"
             )
             print("* Entrypoint check - plugin registration:", FAILED)
 
@@ -183,13 +215,12 @@ def validate_entrypoint(package, entry_map, verbose):
             print("* Entrypoint check - registered modules exist:", FAILED)
         else:
             print("* Entrypoint check - registered modules exist:", PASSED)
-            if verbose:
-                modules = [
-                    entry_map['napari.plugin'][plugin].module_name
-                    for plugin in plugins
-                ]
-                print(f"\tModules found: {modules}")
-    return plugins, errors
+            modules = [
+                entry_map['napari.plugin'][plugin].module_name
+                for plugin in plugins
+            ]
+            verbose.append(f"Modules found: {modules}")
+    return plugins
 
 
 def get_hooks_for_plugin(plugin, signatures):
@@ -206,26 +237,23 @@ def get_hooks_for_plugin(plugin, signatures):
     return plugin_functions
 
 
-def print_hook_report(plugin, hooks, verbose):
-    tab = '\t' if verbose else ''
+def get_hook_report(plugin, hooks, verbose):
     for option, signatures in hooks.items():
-        print(
-            f'{tab}Found {len(signatures)} registered '
-            f'{option.name} hook(s) for {plugin}:'
+        verbose.append(
+            f'Found {len(signatures)} registered '
+            f'{option.name} hook(s) for {plugin}'
         )
         if option == Options.function or option == Options.widget:
-            print(
-                f"{tab}-",
-                f"\n{tab}- ".join(
+            verbose.append(
+                "- "
+                + "\n- ".join(
                     signature["function name"] for signature in signatures
-                ),
+                )
             )
         else:
-            print(
-                f"{tab}-",
-                f"\n{tab}- ".join(
-                    signature["spec"] for signature in signatures
-                ),
+            verbose.append(
+                "- "
+                + "\n- ".join(signature["spec"] for signature in signatures)
             )
 
 

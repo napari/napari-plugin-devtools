@@ -40,8 +40,8 @@ npd validate [Options] <package>
 
 validate without verbose flag
 ```
-$ pip install napari-svg
-$ npd validate napari-svg
+$ pip install -e .
+$ npd validate napari-demo
 ----------------------------------------------------------------
 Scanning current python environment: /Library/Frameworks/Python.framework/Versions/3.8
 ----------------------------------------------------------------
@@ -52,14 +52,14 @@ Validating package napari-svg
 * Entrypoint check - registered modules exist: PASSED
 * Hooks registration check - svg: PASSED
 ----------------------------------------------------------------
-Error: 'Framework :: napari' does not exist for napari-svg's 12 known classifier(s), add 'Framework :: napari' to 
+Error: 'Framework :: napari' does not exist for napari-demo's 12 known classifier(s), add 'Framework :: napari' to 
 classifier list, see https://napari.org/docs/dev/plugins/for_plugin_developers.html#step-4-share-your-plugin-with-the-world
 ----------------------------------------------------------------
 ```
 
 validate package with some errors and verbose flag:
 ```
-$ pip install napari-demo
+$ pip install -e .
 $ npd validate napari-demo
 ----------------------------------------------------------------
 Scanning current python environment: /Library/Frameworks/Python.framework/Versions/3.8
@@ -87,7 +87,7 @@ Error: No hook registered under plugin napari-else, Please see tutorial in https
 
 early termination of checks due to package having invalid entrypoint:
 ```
-$ pip install napari-demo
+$ pip install -e .
 $ npd validate napari-demo
 ----------------------------------------------------------------
 Scanning current python environment: /Library/Frameworks/Python.framework/Versions/3.8
@@ -98,11 +98,13 @@ Validating package napari-demo
 ----------------------------------------------------------------
 Error: 'Framework :: napari' does not exist for napari-demo's 10 known classifier(s)
 ----------------------------------------------------------------
-Error: Invalid entrypoint for package napari-demo, add 'napari.plugin' to the entrypoint under napari-demo
+Error: Invalid entrypoint for package napari-demo, add 'napari.plugin' section to the entrypoint under napari-demo, see https://napari.org/docs/dev/plugins/for_plugin_developers.html#step-3-make-your-plugin-discoverable
 ----------------------------------------------------------------
 ```
+
+early termination of checks due to no plugin registered for package:
 ```
-$ pip install napari-demo
+$ pip install -e .
 $ npd validate napari-demo
 ----------------------------------------------------------------
 Scanning current python environment: /Library/Frameworks/Python.framework/Versions/3.8
@@ -113,7 +115,7 @@ Validating package napari-demo
 * Entrypoint check - plugin registration: FAILED
 * Entrypoint check - registered modules exist: FAILED
 ----------------------------------------------------------------
-Error: No plugin registered for napari-demo, add plugin module registration under 'napari.plugin'
+Error: No plugin registered for napari-demo, add plugin module registration under 'napari.plugin', see https://napari.org/docs/dev/plugins/for_plugin_developers.html#step-3-make-your-plugin-discoverable
 ----------------------------------------------------------------
 ```
 

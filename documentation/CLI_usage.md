@@ -24,7 +24,7 @@ npd [COMMANDS] [ARGS...]
 
 ### Description
 Validate package(s) within current python environment, report PASSED or FAILED for each check, 
-only return 1 when all checks passed.
+only exit with code 0 when all checks passed.
 
 ### Usage
 ```
@@ -38,7 +38,7 @@ npd validate [Options] <package>
 
 ### Examples
 
-validate without verbose flag
+validate a local package named napari-demo without verbose flag
 ```
 $ pip install -e .
 $ npd validate napari-demo
@@ -57,7 +57,7 @@ classifier list, see https://napari.org/docs/dev/plugins/for_plugin_developers.h
 ----------------------------------------------------------------
 ```
 
-validate package with some errors and verbose flag:
+validate a local package named napari-demo with some errors and verbose flag:
 ```
 $ pip install -e .
 $ npd validate napari-demo
@@ -123,7 +123,7 @@ Error: No plugin registered for napari-demo, add plugin module registration unde
 ## npd discover
 
 ### Description
-Discover plugins in current python environment, and show hook types for each plugin
+Discover plugins in current python environment, and show hook types for each plugin in verbose mode
 
 ### Usage
 ```

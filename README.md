@@ -18,35 +18,16 @@ these checks verify that the plugin is available for users of napari
 to install, and would register entry points with napari. 
 
 There are two parts to the validation tool. One part is a 
-command line interface and the other is a pytest fixture.
+command line interface, and the other is a pytest fixture.
 
 ### Command Line Interface (CLI) Usage
-The CLI can be used by continuous integration (CI) pipelines to perform a 
-quick verification of a plugins setup without any specific input required. 
-It serves as a quick "sanity check". (It is also accessible from python in validation.py)
 
-The tool can be run as `npd <cmd>`. where currently we support cmd `validate`:
-
-`npd validate`: validate classifiers and function hooks can be recognized by napari.
-The validation would run on built packages under dist folder to check if they are annotated
-properly with framework classifier, and validate hooks are properly annotated that they can be found
-by napari.
-
-`npd validate -i|--include-plugin INCLUDE_PLUGIN [INCLUDE_PLUGIN ...]` run hook checks only on listed plugins, 
-this is useful to filter out other plugins on a complicated python environment.
-
-
-`npd validate -e|--exclude-plugin EXCLUDE_PLUGIN [EXCLUDE_PLUGIN ...]` do not run hook checks on listed plugins, 
-this is useful to filter out other plugins on a complicated python environment.
-
-`npd validate -v|--verbose` enable verbose mode, gives slightly more information on the underlying 
-findings of validation process.
-
+see [CLI_usage.md](documentation/CLI_usage.md)
 
 
 ### Pytest fixture usage
 devtools provides a pytest fixture: napari_plugin_tester 
-in plugin_tester.py, it extends a plugin manager used by napari
+in the plugin_tester.py, it extends a plugin manager used by napari
 and have additional assertion modes ready:
 ```
 def test_pm(napari_plugin_tester):

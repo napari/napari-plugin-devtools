@@ -5,7 +5,6 @@ from typing import Callable, Dict, List, Union
 
 from napari.plugins import plugin_manager
 from napari_plugin_engine import HookImplementation
-from pkginfo import SDist, Wheel
 
 
 class Options(enum.Enum):
@@ -23,31 +22,6 @@ class Options(enum.Enum):
     ]
     function = [plugin_manager.hook.napari_experimental_provide_function]
     widget = [plugin_manager.hook.napari_experimental_provide_dock_widget]
-
-
-def validate_package(pkgpath, verbose=False):
-    if pkgpath.endswith('.tar.gz'):
-        dist = SDist(pkgpath)
-    elif pkgpath.endswith('.whl'):
-        dist = Wheel(pkgpath)
-    else:
-        print(f'Error: Not a valid format {pkgpath}')
-        return False
-    if not (
-        hasattr(dist, 'classifiers')
-        and 'Framework :: napari' in dist.classifiers
-    ):
-        print(
-            f'Error: "Framework :: napari" was not found in {pkgpath}\n'
-            f'Please update your package setup configuration to include '
-            f'"Framework :: napari", then rebuild the distribution.'
-        )
-        if verbose:
-            classifiers = '\n\t'.join(dist.classifiers)
-            print(f'Know classifiers:\n\t{classifiers}\n')
-        return False
-    else:
-        return True
 
 
 def validate_function(
@@ -68,25 +42,24 @@ def validate_function(
 
     Returns
     ------
-    validated: boolean
-        True if the function is valid, False otherwise
+    errors: dict of str to str array
+        errors found when validating function.
     """
-    validated = True
+    errors = {}
     plugin_name = hookimpl.plugin_name
-    hook_name = '`napari_experimental_provide_function`'
     if plugin_name is None:
-        validated = False
-        print("Error: No plugin name specified")
-
+        errors[''] = ["Error: No plugin name specified"]
+    else:
+        errors[plugin_name] = []
     for func in args if isinstance(args, list) else [args]:
         if isinstance(func, tuple):
-            validated = False
-            print("Error: convert tuple to list for multiple callables")
+            errors[plugin_name].append(
+                "Error: convert tuple to list " "for multiple callables"
+            )
         elif not isinstance(func, FunctionType):
-            validated = False
-            print(
+            errors[plugin_name].append(
                 f'Error: Plugin {plugin_name!r} provided a non-callable type '
-                f'to {hook_name}: {type(func)!r}. Function ignored.'
+                f': {type(func)!r}. Function ignored.'
             )
 
         # Get function name
@@ -94,38 +67,31 @@ def validate_function(
 
         key = (plugin_name, name)
         if key in functions:
-            validated = False
-            print(
+            errors[plugin_name].append(
                 f"Error: Plugin '{plugin_name}' has already registered a "
                 f"function '{name}' which has now been overwritten"
             )
         functions[key] = func
 
-    return validated
+    return errors
 
 
-def list_hook_implementations(option, include_plugins, exclude_plugins):
+def list_hook_implementations():
     """
     List hook implementations found when loaded by napari
 
     Parameters
     ----------
-    option : Options
-        type of the function hook to check
-    include_plugins : set[str]
-        if provided, only show functions from the given plugin name
-    exclude_plugins : set[str]
-        if provided, do not show functions from the given set
 
     Returns
     -------
-    validated: boolean
-        True if the functions are validated, False otherwise
-    functions_signatures: List
-        list of function signatures
+    functions_signatures: dict of option to list
+        different types of list of function signatures
+    errors: dict of str to str array
+        errors found when validating function.
 
     Example:
-    [{
+    {Options.reader: {
         "plugin name": "napari-demo",
         "function name": "image arithmetic",
         "args": ["layerA", "operation", "layerB"],
@@ -136,29 +102,27 @@ def list_hook_implementations(option, include_plugins, exclude_plugins):
             "layerB": "napari.types.ImageData"
         },
         "defaults": null
-    }]
+    }}
     """
-    function_signatures = []
-    validated = True
-    functions = dict()
-    if exclude_plugins is None:
-        exclude_plugins = {'builtins', 'svg'}
-    else:
-        exclude_plugins.add('builtins')
-        exclude_plugins.add('svg')  # excluding default installed plugins
-    if option == Options.function or option == Options.widget:
-        fw_hook = option.value[0]
-        res = fw_hook._hookexec(fw_hook, fw_hook.get_hookimpls(), None)
-        for result, impl in zip(res.result, res.implementation):
-            validated = validated and validate_function(
-                result, impl, functions
-            )
-        for key, value in functions.items():
-            spec = inspect.getfullargspec(value)
-            if (key[0] not in exclude_plugins) and (
-                include_plugins is None or key[0] in include_plugins
-            ):
-                function_signatures.append(
+    function_signatures = {}
+    errors = {}
+    for option in Options:
+        functions = dict()
+        function_signatures[option] = []
+        if option == Options.function or option == Options.widget:
+            fw_hook = option.value[0]
+            res = fw_hook._hookexec(fw_hook, fw_hook.get_hookimpls(), None)
+            for result, impl in zip(res.result, res.implementation):
+                for plugin_name, error_messages in validate_function(
+                    result, impl, functions
+                ).items():
+                    if plugin_name in errors:
+                        errors[plugin_name].extend(error_messages)
+                    else:
+                        errors[plugin_name] = error_messages
+            for key, value in functions.items():
+                spec = inspect.getfullargspec(value)
+                function_signatures[option].append(
                     {
                         'plugin name': key[0],
                         'function name': key[1],
@@ -167,14 +131,11 @@ def list_hook_implementations(option, include_plugins, exclude_plugins):
                         'defaults': spec.defaults,
                     }
                 )
-    elif option == Options.reader or option == Options.writer:
-        for hook_spec in option.value:
-            for hook_impl in hook_spec.get_hookimpls():
-                if (hook_impl.plugin_name not in exclude_plugins) and (
-                    include_plugins is None
-                    or hook_impl.plugin_name in include_plugins
-                ):
-                    function_signatures.append(
+
+        elif option == Options.reader or option == Options.writer:
+            for hook_spec in option.value:
+                for hook_impl in hook_spec.get_hookimpls():
+                    function_signatures[option].append(
                         {
                             'plugin name': hook_impl.plugin_name,
                             'spec': hook_impl.specname,
@@ -182,4 +143,5 @@ def list_hook_implementations(option, include_plugins, exclude_plugins):
                             'trylast': hook_impl.trylast,
                         }
                     )
-    return validated, function_signatures
+
+    return function_signatures, errors
